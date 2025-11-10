@@ -1,0 +1,194 @@
+---
+title: "Group Project: Flight Delays"
+author: "EDA Contribution: Cindy Zhao"
+output: word_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+# This first chunk is for setup. 
+# The 'include=FALSE' option means the code will run, but it won't be shown in the final document.
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Summary
+
+Delay Extremes: 
+
+Identify airlines with the most and least delays (>15 min)
+Identify airports with the most and least delays
+Look at both departure delays (DEP_DEL15) and arrival delays (ARR_DEL15)
+
+Delay Duration Dynamics:
+
+Analyze the distribution of delay times through histograms
+Highlight airlines/airports with the highest and lowest average delay durations
+Look at variation (standard deviation) in delays
+
+Temporal and Operational Patterns:
+
+Visualize how delays vary by time of day (using DEP_TIME_BLK)
+Examine how delays differ by day of week
+Explore relationship between distance and delays
+
+## Data
+
+```{r load-data, echo=FALSE}
+
+# Load Libraries and Data
+library(tidyverse)
+library(flextable)
+library(gridExtra)
+library(ggExtra)
+
+flight_delays_df <- read.csv("T_ONTIME_MARKETING.csv")
+```
+
+### Preview the data set
+
+```{r df preview, echo=FALSE}
+
+flight_delays_df %>%
+  select(1:10) %>% 
+  head(3) %>%
+  flextable() %>%
+  set_caption("Flight delays (first 3 rows and first 10 columns of dataset)") %>%
+  fontsize(size = 6, part = "all")
+```
+
+## Part 1: EDA (Exploratory Data Analysis) of population growth:
+
+### Identify airlines with the most and least Arrival Delays (>15 min) 
+
+```{r P1Q1, echo=FALSE} 
+
+airline_delay_summary <- flight_delays_df %>%
+  # Group by airline
+  group_by(MKT_UNIQUE_CARRIER) %>%
+  summarize(
+    Total_Flights = n(),
+    # Sum gives the total number of delays. 
+    # ARR_DEL15 is 1 if a delay >= 15 min
+    Total_Delayed_Flights = sum(ARR_DEL15, na.rm = TRUE),
+    # Percentage of delayed flights
+    Delay_Percentage = (Total_Delayed_Flights / Total_Flights) * 100
+  )
+
+# Airlines with the highest Delay_Percentage
+most_delayed <- airport_arrival_delay_summary %>%
+  arrange(desc(Delay_Percentage)) %>%
+  slice_head(n = 9)
+
+most_delayed %>%
+  flextable() %>%
+  set_caption("Airlines with the highest Delay_Percentage") %>%
+autofit()
+
+# Airline with the Lowest Delay_Percentage
+least_delayed <- delay_summary %>%
+  arrange(Delay_Percentage) %>%
+  slice_head(n = 9)
+
+least_delayed %>%
+  flextable() %>%
+  set_caption("Airlines with the Lowest Delay_Percentage") %>%
+autofit()
+```
+
+\pagebreak
+
+```{r overall_increase, echo=FALSE, fig.width = 8}
+
+N_disp <- 9
+top_delayed_carrier_codes <- most_delayed$MKT_UNIQUE_CARRIER 
+
+daily_delay_trends <- flight_delays_df %>%
+  filter(MKT_UNIQUE_CARRIER %in% top_delayed_carrier_codes) %>%
+  group_by(MKT_UNIQUE_CARRIER, DAY_OF_MONTH) %>%
+  summarise(
+    Daily_Flights = n(),
+    Daily_Delayed = sum(ARR_DEL15, na.rm = TRUE),
+    Daily_Delay_Percentage = (Daily_Delayed / Daily_Flights) * 100,
+    .groups = 'drop' 
+  )
+
+daily_delay_trends %>%
+  ggplot(aes(x = DAY_OF_MONTH, y = Daily_Delay_Percentage, color = MKT_UNIQUE_CARRIER)) +
+  geom_line(linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ MKT_UNIQUE_CARRIER, scales = "free_y", ncol = 3) +
+  labs(
+    title = paste0("Airlines with the highest Arrival Delays (>15 min): Daily Percentages"),
+    x = "Day of Month (July 2025)",
+    y = "Daily Delay Percentage (%)"
+  ) +
+  theme_minimal()
+```
+
+### Identify origin airports with the most and least Arrival Delays (>15 min)
+
+```{r P1Q2, echo=FALSE} 
+
+airport_delay_summary <- flight_delays_df %>%
+  # Group by the Destination Airport
+  group_by(ORIGIN) %>%
+  summarize(
+    Total_Arrivals = n(),
+    # Sum gives the total number of delays. 
+    # ARR_DEL15 is 1 if a delay >= 15 min
+    Total_Arrival_Delays = sum(ARR_DEL15, na.rm = TRUE),
+    # Percentage of delayed flights
+    Arrival_Delay_Percentage = (Total_Arrival_Delays / Total_Arrivals) * 100
+  )
+
+# Destination Airports with the highest Arrival_Delay_Percentage
+most_delayed_arrivals <- airport_delay_summary %>%
+  arrange(desc(Arrival_Delay_Percentage)) %>%
+  slice_head(n = 5)
+
+# Display the top 5 most delayed airports
+most_delayed_arrivals %>%
+  flextable() %>%
+  set_caption("Origin Airports with the Highest Arrival Delay Percentage (>15 min)") %>%
+  autofit()
+
+# Destination Airports with the Lowest Arrival_Delay_Percentage
+least_delayed_arrivals <- airport_delay_summary %>%
+  arrange(Arrival_Delay_Percentage) %>%
+  slice_head(n = 9)
+
+# Display the top 5 least delayed airports
+least_delayed_arrivals %>%
+  flextable() %>%
+  set_caption("Origin Airports with the Lowest Arrival Delay Percentage (>15 min)") %>%
+  autofit()
+
+```
+
+\pagebreak
+
+```{r overall_increase, echo=FALSE, fig.width = 8}
+
+N_disp <- 9
+top_delayed_carrier_codes <- most_delayed$MKT_UNIQUE_CARRIER 
+
+daily_delay_trends <- flight_delays_df %>%
+  filter(MKT_UNIQUE_CARRIER %in% top_delayed_carrier_codes) %>%
+  group_by(MKT_UNIQUE_CARRIER, DAY_OF_MONTH) %>%
+  summarise(
+    Daily_Flights = n(),
+    Daily_Delayed = sum(ARR_DEL15, na.rm = TRUE),
+    Daily_Delay_Percentage = (Daily_Delayed / Daily_Flights) * 100,
+    .groups = 'drop' 
+  )
+
+daily_delay_trends %>%
+  ggplot(aes(x = DAY_OF_MONTH, y = Daily_Delay_Percentage, color = MKT_UNIQUE_CARRIER)) +
+  geom_line(linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ MKT_UNIQUE_CARRIER, scales = "free_y", ncol = 3) +
+  labs(
+    title = paste0("Airlines with the highest Arrival Delays (>15 min): Daily Percentages"),
+    x = "Day of Month (July 2025)",
+    y = "Daily Delay Percentage (%)"
+  ) +
+  theme_minimal()
+```

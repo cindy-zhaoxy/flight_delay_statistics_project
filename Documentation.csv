@@ -1,0 +1,36 @@
+SYS_FIELD_NAME,FIELD_DESC
+YEAR,Year
+MONTH,Month
+DAY_OF_MONTH,Day of Month
+DAY_OF_WEEK,Day of Week
+FL_DATE,Flight Date (yyyymmdd)
+MKT_UNIQUE_CARRIER,"Unique Marketing Carrier Code. When the same code has been used by multiple carriers, a numeric suffix is used for earlier users, for example, PA, PA(1), PA(2). Use this field for analysis across a range of years."
+ORIGIN,Origin Airport
+ORIGIN_CITY_NAME,"Origin Airport, City Name"
+ORIGIN_STATE_NM,"Origin Airport, State Name"
+DEST,Destination Airport
+DEST_CITY_NAME,"Destination Airport, City Name"
+DEST_STATE_NM,"Destination Airport, State Name"
+CRS_DEP_TIME,CRS Departure Time (local time: hhmm)
+DEP_TIME,Actual Departure Time (local time: hhmm)
+DEP_DELAY,Difference in minutes between scheduled and actual departure time. Early departures show negative numbers.
+DEP_DELAY_NEW,Difference in minutes between scheduled and actual departure time. Early departures set to 0.
+DEP_DEL15,"Departure Delay Indicator, 15 Minutes or More (1=Yes)"
+DEP_TIME_BLK,"CRS Departure Time Block, Hourly Intervals"
+TAXI_OUT,"Taxi Out Time, in Minutes"
+TAXI_IN,"Taxi In Time, in Minutes"
+CRS_ARR_TIME,CRS Arrival Time (local time: hhmm)
+ARR_TIME,Actual Arrival Time (local time: hhmm)
+ARR_DELAY,Difference in minutes between scheduled and actual arrival time. Early arrivals show negative numbers.
+ARR_DELAY_NEW,Difference in minutes between scheduled and actual arrival time. Early arrivals set to 0.
+ARR_DEL15,"Arrival Delay Indicator, 15 Minutes or More (1=Yes)"
+CANCELLED,Cancelled Flight Indicator (1=Yes)
+CANCELLATION_CODE,Specifies The Reason For Cancellation
+DIVERTED,Diverted Flight Indicator (1=Yes)
+AIR_TIME,"Flight Time, in Minutes"
+DISTANCE,Distance between airports (miles)
+CARRIER_DELAY,"Carrier Delay, in Minutes"
+WEATHER_DELAY,"Weather Delay, in Minutes"
+NAS_DELAY,"National Air System Delay, in Minutes"
+SECURITY_DELAY,"Security Delay, in Minutes"
+LATE_AIRCRAFT_DELAY,"Late Aircraft Delay, in Minutes"
