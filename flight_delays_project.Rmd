@@ -24,7 +24,7 @@ Delay Extremes:
 
 Identify airlines with the most and least delays (>15 min)
 Identify airports with the most and least delays
-Look at both departure delays (DEP_DEL15) and arrival delays (ARR_DEL15)
+Look at arrival delays (ARR_DEL15)
 
 Delay Duration Dynamics:
 
