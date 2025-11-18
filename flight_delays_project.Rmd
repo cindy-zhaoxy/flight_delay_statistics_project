@@ -1,6 +1,6 @@
 ---
-title: "Group Project: Flight Delays"
-author: "EDA Contribution: Cindy Zhao"
+title: "Group Project: Flight Delays EDA"
+author: "Cindy Zhao's Contribution to Group 4"
 output: word_document
 date: "`r Sys.Date()`"
 ---
@@ -13,18 +13,15 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 ## Summary
 
-Project Proposal: Analyzing and Predicting Flight Delays Using Bureau of Transportation Statistics Data
+Analyzing and Predicting Flight Delays Using Bureau of Transportation Statistics Data
 
-This project analyzes and predicts U.S. airline flight delays using the Bureau of Transportation Statistics (BTS) On-Time Performance dataset.The data include around 70,000 flights from July 2025 with fields such as airline, airport, date, scheduled and actual times, delay durations, and causes (weather, carrier, system, and late aircraft).
-
-
-Columns(35) include: YEAR MONTH DAY_OF_MONTH DAY_OF_WEEK FL_DATE MKT_UNIQUE_CARRIER ORIGIN ORIGIN_CITY_NAME ORIGIN_STATE_NM DEST DEST_CITY_NAME DEST_STATE_NM CRS_DEP_TIME DEP_TIME DEP_DELAY DEP_DELAY_NEW DEP_DEL15 DEP_TIME_BLK TAXI_OUT TAXI_IN CRS_ARR_TIME ARR_TIME ARR_DELAY ARR_DELAY_NEW ARR_DEL15 CANCELLED CANCELLATION_CODE DIVERTED AIR_TIME DISTANCE CARRIER_DELAY WEATHER_DELAY NAS_DELAY SECURITY_DELAY LATE_AIRCRAFT_DELAY
+This project analyzes and predicts U.S. airline flight delays using the On-Time Performance dataset.The data include all of ~70,000 flights from July 2025 with fields such as airline, airport, date, scheduled and actual times, delay durations, and causes (weather, carrier, system, and late aircraft).
 
 Delay Extremes: 
 
 Identify airlines with the most and least delays (>15 min)
 Identify airports with the most and least delays
-Look at arrival delays (ARR_DEL15) and departure delays (DEP_DEL15)
+Look at arrival delays (ARR_DEL15)
 
 Delay Duration Dynamics:
 
@@ -33,10 +30,12 @@ Highlight airlines/airports with the highest and lowest average delay durations
 
 Temporal and Operational Patterns:
 
-Visualize how delays vary by time of day (using DEP_TIME_BLK)
+Visualize how delays vary by time of day and delay segments (using DEP_TIME_BLK and ARR_DELAY)
 Examine how delays are caused by a previous event, showing how a "hotspot" spreads to the current flight (LATE_AIRCRAFT_DELAY)
 
 ## Data
+
+The data is available from the Bureau of Transportation Statistics (BTS): https://transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGK&QO_fu146_anzr=b0-gvzr
 
 ```{r load-data, echo=FALSE}
 
@@ -61,38 +60,31 @@ flight_delays_df %>%
   fontsize(size = 6, part = "all")
 ```
 
-## Part 1: EDA (Exploratory Data Analysis) of arrival flight delays:
+## EDA (Exploratory Data Analysis) of arrival flight delays:
 
-```{r EDA rates, echo=FALSE, fig.width=8, fig.height=3.5}
-mean_delay_rate <- mean(flight_delays_df$ARR_DEL15, na.rm = TRUE) * 100 
-median_delay_rate <- median(flight_delays_df$ARR_DEL15, na.rm = TRUE) * 100
-
-daily_flights_summary <- flight_delays_df %>%
-  group_by(DAY_OF_MONTH) %>%
-  summarise(
-    Total_Flights_Day = n(),
-    Total_Delayed_Day = sum(ARR_DEL15, na.rm = TRUE),
-    Daily_Delay_Percentage = (Total_Delayed_Day / Total_Flights_Day) * 100
-  ) %>%
-  ungroup() 
-
-p1 <- ggplot(daily_flights_summary, aes(x = DAY_OF_MONTH, y = Daily_Delay_Percentage)) +
-  geom_line(color = "steelblue", linewidth = 1) + 
-  ggtitle("Daily Arrival Delay Percentage") +
-  xlab("Day of Month (July 2025)") +
-  ylab("Daily Delay Percentage (%)") +
-  theme_minimal() +
-  scale_x_continuous(breaks = seq(1, max(daily_flights_summary$DAY_OF_MONTH, na.rm = TRUE), by = 2))
-
-p2 <- ggplot(daily_flights_summary, aes(x = Daily_Delay_Percentage)) +
-  geom_histogram(binwidth = 1.5, fill = "steelblue", color = "black") + 
-  geom_vline(aes(xintercept = mean(Daily_Delay_Percentage, na.rm = TRUE)), color = "red", linetype = "dashed", linewidth = 1) +
-  labs(
-    title = "Distribution of Daily Arrival Delay Percentages", 
-    x = "Daily Delay Percentage (%)", 
-    y = "Frequency (Days)"
-  )
-
+```{r EDA rates, echo=FALSE, fig.width=10, fig.height=5}
+p1 <- flight_delays_df %>%
+  filter(!is.na(ARR_DELAY)) %>% 
+  ggplot(aes(x = ARR_DELAY)) +
+  geom_histogram(binwidth = 15, fill = "#4c72b0", color = "black") +   geom_vline(aes(xintercept = mean(ARR_DELAY, na.rm = TRUE)), 
+             color = "red", linetype = "dashed", linewidth = 1) +
+  coord_cartesian(xlim = c(-60, 200)) + 
+  labs(title = "Distribution of Arrival Delays (All Flights)",
+       x = "Arrival Delay (minutes)",
+       y = "Count of Flights") +
+  theme_minimal()
+p2 <- flight_delays_df %>%
+  filter(!is.na(DEP_DELAY)) %>%
+  
+  ggplot(aes(x = DEP_DELAY)) +
+  geom_histogram(binwidth = 15, fill = "#de524e", color = "black") +
+  geom_vline(aes(xintercept = mean(DEP_DELAY, na.rm = TRUE)), 
+             color = "red", linetype = "dashed", linewidth = 1) +
+  coord_cartesian(xlim = c(-60, 200)) + 
+  labs(title = "Distribution of Departure Delays (All Flights)",
+       x = "Departure Delay (minutes)",
+       y = "Count of Flights") +
+  theme_minimal()
 grid.arrange(p1, p2, ncol = 2)
 ```
 
@@ -138,31 +130,21 @@ least_delayed %>%
 autofit()
 ```
 
-```{r overall_increase, echo=FALSE, fig.width = 8}
+```{r, echo=FALSE, fig.width = 8}
 
-N_disp <- 9
 top_delayed_carrier_codes <- most_delayed$MKT_UNIQUE_CARRIER 
 
-daily_delay_trends <- flight_delays_df %>%
+daily_delay_trends3 <- flight_delays_df %>%
   filter(MKT_UNIQUE_CARRIER %in% top_delayed_carrier_codes) %>%
-  group_by(MKT_UNIQUE_CARRIER, DAY_OF_MONTH) %>%
-  summarise(
-    Daily_Flights = n(),
-    Daily_Delayed = sum(ARR_DEL15, na.rm = TRUE),
-    Daily_Delay_Percentage = (Daily_Delayed / Daily_Flights) * 100,
-    .groups = 'drop' 
-  )
+  select(MKT_UNIQUE_CARRIER, ARR_DELAY)
 
-daily_delay_trends %>%
-  ggplot(aes(x = DAY_OF_MONTH, y = Daily_Delay_Percentage, color = MKT_UNIQUE_CARRIER)) +
-  geom_line(linewidth = 0.8, show.legend = FALSE) +
-  facet_wrap(~ MKT_UNIQUE_CARRIER, scales = "free_y", ncol = 3) +
-  labs(
-    title = paste0("Airlines with the highest Arrival Delays (>15 min): Daily Percentages"),
-    x = "Day of Month (July 2025)",
-    y = "Daily Delay Percentage (%)"
-  ) +
-  theme_minimal()
+ggplot(data = daily_delay_trends3, aes(x = MKT_UNIQUE_CARRIER, y = ARR_DELAY)) +
+  geom_boxplot(aes(fill = MKT_UNIQUE_CARRIER)) + 
+  stat_summary(fun = median, geom = "point", shape = 23, size = 2, fill = "black") + 
+  coord_cartesian(ylim = c(-30, 100)) + 
+  labs(title = "Arrival Delay Distribution by Airline",
+       x = "Airline Carrier",
+       y = "Arrival Delay (minutes)")
 ```
 
 ### Identify destination airports with the most and least Arrival Delays (>15 min)
@@ -192,6 +174,7 @@ most_delayed_arrivals %>%
   set_caption("Destination Airports with the Highest Arrival Delay Percentage (>15 min)") %>%
   autofit()
 ```
+
 \pagebreak
 
 ```{r P1Q2b, echo=FALSE}
@@ -207,31 +190,20 @@ least_delayed_arrivals %>%
   autofit()
 ```
 
-```{r overall_increase_flights, echo=FALSE, fig.width = 8}
+```{r overall_increase, echo=FALSE, fig.width = 8}
+top_delayed_carrier_codes2 <- most_delayed_arrivals$DEST 
 
-N_disp <- 9
-top_delayed_airports <- most_delayed_arrivals$DEST 
+daily_delay_trends4 <- flight_delays_df %>%
+  filter(DEST %in% top_delayed_carrier_codes2) %>%
+  select(DEST, ARR_DELAY)
 
-daily_delay_trends_airports <- flight_delays_df %>%
-  filter(DEST %in% top_delayed_airports) %>%
-  group_by(DEST, DAY_OF_MONTH) %>%
-  summarise(
-    Daily_Flights = n(),
-    Daily_Delayed = sum(ARR_DEL15, na.rm = TRUE),
-    Daily_Delay_Percentage = (Daily_Delayed / Daily_Flights) * 100,
-    .groups = 'drop' 
-  )
-
-daily_delay_trends_airports %>%
-  ggplot(aes(x = DAY_OF_MONTH, y = Daily_Delay_Percentage, color = DEST)) +
-  geom_line(linewidth = 0.8, show.legend = FALSE) +
-  facet_wrap(~ DEST, scales = "free_y", ncol = 3) +
-  labs(
-    title = paste0("Destination airports with the highest Arrival Delays (>15 min): Daily Percentages"),
-    x = "Day of Month (July 2025)",
-    y = "Daily Delay Percentage (%)"
-  ) +
-  theme_minimal()
+ggplot(data = daily_delay_trends4, aes(x = DEST, y = ARR_DELAY)) +
+  geom_boxplot(aes(fill = DEST)) + 
+  stat_summary(fun = median, geom = "point", shape = 23, size = 2, fill = "black") + 
+  coord_cartesian(ylim = c(-30, 100)) + 
+  labs(title = "Arrival Delay Distribution by Destination Airport",
+       x = "Airport",
+       y = "Arrival Delay (minutes)")
 ```
 
 ### Histograms for the Most Delayed Destination Airports
@@ -264,7 +236,7 @@ ggplot(data = data_for_plot, aes(x = ARR_DELAY)) +
   xlim(0, 200) 
 ```
 
-### Histograms of annual growth rates with lowest average rates.
+### Histograms for the Least Delayed Destination Airports
 
 ```{r P1Q3L, echo=FALSE, fig.width = 8, fig.height = 4}
 
@@ -292,10 +264,141 @@ ggplot(data = data_for_plot_least, aes(x = ARR_DELAY)) +
   xlim(-50, 100)
 ```
 
-### Population growth of flight delays grouped by Weather.
+\pagebreak
 
-### Population growth of flight delays grouped by DEP_TIME_BLK. 
+### Flight delays grouped by DEP_TIME_BLK
 
-## Part 2: EDA (Exploratory Data Analysis) of Departure Delays:
+```{r P1Q4_growth, echo=FALSE, fig.width = 8, fig.height = 4}
 
-## Other Factors influencing growth: DEP_TIME_BLK and LATE_AIRCRAFT_DELAY
+# Grouping Time Blocks into Segments
+flight_delays_df <- flight_delays_df %>%
+  mutate(
+    Time_Segment = case_when(
+      DEP_TIME_BLK %in% c("0001-0559", "0600-0659", "0700-0759", "0800-0859") ~ "A. Early Morning (00:00-08:59)",
+      DEP_TIME_BLK %in% c("0900-0959", "1000-1059", "1100-1159", "1200-1259", "1300-1359", "1400-1459", "1500-1559") ~ "B. Mid-Day (09:00-15:59)",
+      DEP_TIME_BLK %in% c("1600-1659", "1700-1759", "1800-1859", "1900-1959", "2000-2059") ~ "C. Peak Evening (16:00-20:59)",
+      TRUE ~ "D. Late Night (21:00+)"
+    )
+  )
+```
+
+```{r, echo=FALSE, fig.width = 8, fig.height = 4}
+ggplot(data = flight_delays_df, aes(x = Time_Segment, y = ARR_DELAY)) +
+  geom_boxplot(aes(fill = Time_Segment)) +
+  coord_cartesian(ylim = c(-30, 100)) + 
+  labs(title = "Arrival Delay Distribution by Time Segment",
+       x = "Time Segment",
+       y = "Arrival Delay (minutes)") +
+  # Rotate X-axis labels for better readability
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r P1Q4, echo=FALSE, fig.width = 6, fig.height = 3.5}
+
+percentage_segment_summary <- flight_delays_df %>%
+  filter(!is.na(Time_Segment)) %>%
+  group_by(Time_Segment) %>%
+  summarise(
+    Total_Flights = n(),
+    Total_Delayed = sum(ARR_DEL15, na.rm = TRUE),
+    Percentage_Delayed = (Total_Delayed / Total_Flights) * 100
+  ) %>%
+  ungroup() %>%
+  arrange(Percentage_Delayed) 
+
+ggplot(data = percentage_segment_summary, 
+       aes(x = reorder(Time_Segment, -Percentage_Delayed), 
+           y = Percentage_Delayed, 
+           fill = Time_Segment)) +
+  
+  geom_col(color = "black") + 
+  geom_text(aes(label = paste0(round(Percentage_Delayed, 1), "%")), 
+            vjust = -0.5, size = 4) +
+    labs(title = "Risk of Flight Delay by Time of Day",
+       subtitle = "Percentage of flights with Arrival Delay ≥ 15 minutes",
+       x = "Time Segment",
+       y = "Percentage of Flights Delayed (%)") +
+    theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") +
+    scale_y_continuous(limits = c(0, max(percentage_segment_summary$Percentage_Delayed) * 1.1))
+```
+
+\pagebreak
+
+### Population growth of flight delays grouped by ARR_DELAY 
+
+```{r, echo=FALSE, fig.width = 6, fig.height = 6}
+flight_delays_df <- flight_delays_df %>%
+  mutate(
+    Delay_Segment = case_when(
+      ARR_DELAY > 120 ~ "D. Large Delay (> 120 min)",
+      ARR_DELAY > 45 ~ "C. Medium Delay (45 < Delay <= 120 min)",
+      ARR_DELAY > 15 ~ "B. Small Delay (15 < Delay <= 45 min)",
+      TRUE ~ "A. On-Time/Minor Delay (<= 15 min)"
+    )
+  )
+
+ggplot(data = flight_delays_df, 
+       aes(x = Delay_Segment, y = ARR_DELAY, fill = Delay_Segment)) +
+  
+  geom_boxplot(outlier.shape = NA) + 
+  coord_cartesian(ylim = c(-30, 200)) + 
+  labs(title = "Arrival Delay Distribution by Severity Segment",
+       x = "Arrival Delay Severity Segment",
+       y = "Arrival Delay (minutes)") +
+  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+```{r P1Q5_growth_plot, echo=FALSE, fig.width = 6, fig.height = 6}
+delay_composition_summary <- flight_delays_df %>%
+  filter(!is.na(ARR_DELAY)) %>%
+  group_by(Delay_Segment) %>%
+  summarise(
+    Total_Flights = n()
+  ) %>%
+  ungroup() %>%
+  mutate(
+    Percentage = (Total_Flights / sum(Total_Flights)) * 100
+  ) %>%
+  arrange(Delay_Segment)
+
+ggplot(data = delay_composition_summary, 
+       aes(x = Delay_Segment, y = Percentage, fill = Delay_Segment)) +
+  geom_col(color = "black") + 
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), 
+            vjust = -0.5, size = 4) +
+  labs(title = "Composition of Arrival Delay Severity",
+       subtitle = "Percentage breakdown of all flights",
+       x = "Arrival Delay Severity Segment",
+       y = "Percentage of Total Flights (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") + 
+    scale_y_continuous(limits = c(0, max(delay_composition_summary$Percentage) * 1.05))
+```
+\pagebreak
+
+## LATE_AIRCRAFT_DELAY influencing Flight Delays
+
+Examine how delays are caused by a previous event, showing how a "hotspot" spreads to the current flight (LATE_AIRCRAFT_DELAY)
+
+```{r, echo=FALSE, fig.width = 8, fig.height = 4}
+late_aircraft_delays_df <- flight_delays_df %>%
+  filter(!is.na(LATE_AIRCRAFT_DELAY) & LATE_AIRCRAFT_DELAY > 0) %>%
+  select(LATE_AIRCRAFT_DELAY)
+
+ggplot(data = late_aircraft_delays_df, aes(x = LATE_AIRCRAFT_DELAY)) +
+  geom_histogram(binwidth = 15, fill = "blue", color = "black") +   coord_cartesian(xlim = c(0, 300)) + 
+  labs(
+    title = "Severity of Delays Caused by Late Aircraft",
+    subtitle = "Distribution of delay minutes attributed to LATE_AIRCRAFT_DELAY",
+    x = "Late Aircraft Delay (Minutes)",
+    y = "Count of Flights"
+  ) +
+  theme_minimal()
+```
+
